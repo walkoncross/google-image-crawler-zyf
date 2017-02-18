@@ -13,7 +13,7 @@ import os.path as osp
 
 import fnmatch
 
-#import json
+import json
 
 #import urllib2
 from urllib import urlencode
@@ -25,51 +25,78 @@ import datetime
 
 import hashlib
 
-########### Edit From Here ###########
-# How many images you want to download. Google will only return 100 images at most for one search
-target_items_for_each_keyword = 200
+from collections import OrderedDict
+
+########### CONFIGS ###########
+# Path to config_file
+config_file = './config.json'
+
+########### Default CONFIGS ###########
+CONFIGS = {}
+
+# How many images you want to download for each class. Google will only return 100 images at most for one search
+CONFIGS[u'num_downloads_for_each_class'] = 200
 
 # image type to search
-#file_type = ['jpg', 'bmp', 'png']
-file_type = 'jpg'
-#file_type = 'bmp'
-#file_type = 'png'
+CONFIGS[u'search_file_type'] = 'jpg'
+#CONFIGS[u'search_file_type'] = 'bmp'
+#CONFIGS[u'search_file_type'] = 'png'
 
 # Because google only returns at most 100 results for each search query,
 # we must send many search queries to get more than 100 results.
 # We need to set cdr (date range, in the form of "tbs=cdr:1,cd_min:{start_date},cd_max:{end_date}") to tell google
 # we want to search images in some date range (start_date, end_date),
 # so as to get different results for each search query.
-# cdr_interval_days is the days between cd_min and cd_max.
-cdr_interval_days = 60
+# CONFIGS[u'search_cdr_days'] is the days between cd_min and cd_max.
+CONFIGS[u'search_cdr_days'] = 60
 
 #This dict is used to search keywords. You can edit this dict to search for google images of your choice. You can simply add and remove elements of the list.
-#{searching_issue 1:[list of issue1 related keywords], searching_issue2:[list of issue2 related keywords]...}
-search_keywords_dicts = {'animal':[u'猫', 'cat', 'dog']}
-#search_keywords_dicts = {'TibetanFlags':[u'藏独旗帜', u'雪山狮子旗', 'Tibetan Flag', 'Tibetan National Flag'],
-#                         'IslamicFlags':[u'星月旗', 'east turkestan flag', 'Islamic flag', 'muslim flag', 'Star And Crescent Flag', 'Flag with star and cresent', 'star and moon flag', 'flag with star and moon flag'],
-#                         'Guns':[u'枪械', 'gun', 'rifle'],
-#                         'Knives':[u'防身刀具', u'刀具', 'knife', 'knives', 'dagger', 'daggers'],
-#                         'MuslimVeils':[u'伊斯兰面纱', u'穆斯林面纱', 'Muslim veils', 'Islamic veils', 'black hijab', 'Islamic Women', 'Islamic woman']
-#                         }
-#                         
+#{class1:[list of related keywords], class2:[list of related keywords]...}
+CONFIGS[u'search_keywords_dict'] = {'animal':[u'猫', 'cat', 'dog'],
+                                    'fruit':[u'apple', u'banaba']}
 
 #This list is used to further add suffix to your search term. Each element of the list will help you download 100 images. First element is blank which denotes that no suffix is added to the search keyword of the above list. You can edit the list by adding/deleting elements from it.So if the first element of the search_keyword is 'Australia' and the second element of keywords is 'high resolution', then it will search for 'Australia High Resolution'
 #aux_keywords = [' high resolution']
 
-save_dir = './downloads' + '/'
+CONFIGS[u'save_dir'] = './downloads'
 
-output_prefix = 'download_urls_'
-output_suffix = 'google'
+CONFIGS[u'output_prefix'] = 'download_urls'
+CONFIGS[u'output_suffix'] = 'google'
 
-if not osp.exists(save_dir):
-    os.mkdir(save_dir)
+print '==>Default CONFIGS:'
+print CONFIGS
+########### End of Default CONFIGS ###########
 
-#output_prefix = save_dir + output_prefix  
-########### End of Editing ###########
+########### Load config.json if there is one ###########
+if osp.exists(config_file):
+    print "Load CONFIGS from " + config_file
+    fp = open(config_file, 'a+')
+    CONFIGS_loaded = json.load(fp, object_pairs_hook=OrderedDict)
+    
+    print '==>Loaded CONFIGS:'
+    print CONFIGS_loaded
 
-#Load downloaded urls
+    for k,v in CONFIGS_loaded.iteritems():
+		if k in CONFIGS:
+			CONFIGS[k] = v
+   
+    fp.close()
+    
+    print '==>CONFIGS after loading:'
+    print CONFIGS   
+########### End of Load config.json ###########
 
+
+#CONFIGS[u'output_prefix'] = CONFIGS[u'output_prefix'] + '_'
+#CONFIGS[u'output_suffix'] = '_' + CONFIGS[u'output_suffix']
+
+CONFIGS[u'save_dir'] = CONFIGS[u'save_dir']+'/'
+if not osp.exists(CONFIGS[u'save_dir']):
+    os.mkdir(CONFIGS[u'save_dir'])
+
+########### End of CONFIGS ###########
+
+########### Functions to Load downloaded urls ###########
 def load_url_files(_dir, file_name_prefix):
     url_list = []
     
@@ -111,7 +138,8 @@ def load_all_url_files(_dir, file_name_prefix):
             fp_urls.close()
             
     return url_list         
- 
+########### End of Functions to Load downloaded urls ###########
+
 ############## Functions to get date/time strings ############       
 def get_current_date():
     tm = time.gmtime()
@@ -135,7 +163,7 @@ def get_localtime_string():
 ############## End of Functions to get date/time strings ############          
     
 ############## Google Image Search functions ############    
-############## Get Image URL list form Google image search by keyword ############
+# Get Image URL list form Google image search by keyword
 def google_get_query_url(keyword, file_type, cdr):
     url = None
     
@@ -261,7 +289,7 @@ def download_image(url, save_dir, loaded_urls=None):
             real_url = None
         else:
             img_name = hashlib.md5(real_url).hexdigest()
-            save_image_name = save_dir + '/' + img_name + '.' + file_type
+            save_image_name = save_dir + '/' + img_name + '.' + CONFIGS[u'search_file_type']
             print 'Try to save image ' + real_url + ' into file: ' +  save_image_name
             output_file = open(save_image_name,'wb')
             data = response.read()
@@ -295,19 +323,19 @@ print "Today is: " + cur_date.strftime("%Y/%m/%d")
 
 time_str = get_gmttime_string()
 
-for class_name,search_keywords in search_keywords_dicts.iteritems():
+for class_name,search_keywords in CONFIGS[u'search_keywords_dict'].iteritems():
     print "Class no.: " + str(i+1) + " -->" + " Class name = " + str(class_name)
    
-    class_urls_file_prefix = output_prefix + str(class_name).strip()
+    class_urls_file_prefix = CONFIGS[u'output_prefix'] + '_' + str(class_name).strip()
     
-    items = load_url_files(save_dir, class_urls_file_prefix)    
+    items = load_url_files(CONFIGS[u'save_dir'], class_urls_file_prefix)    
     loaded_urls_num = len(items)
     print 'Loaded URLs in total is: ', loaded_urls_num
 
     # load pre-saved download parameters, actually cd_min for date range
     cd_max = cur_date
 
-    params_file = osp.join(save_dir, class_urls_file_prefix + '_params_' + output_suffix + '.txt')
+    params_file = osp.join(CONFIGS[u'save_dir'], class_urls_file_prefix + '_params_' + CONFIGS[u'output_suffix'] + '.txt')
     print 'Loaded pre-saved download parameters from: ' + params_file
     params_list = []
     fp_params = open(params_file, 'a+')
@@ -322,20 +350,20 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
         if len(splits)==3:
             cd_max = datetime.date(int(splits[0]), int(splits[1]), int(splits[2]))
     
-    cd_min = get_new_date_by_delta_days(cd_max, -cdr_interval_days)   
+    cd_min = get_new_date_by_delta_days(cd_max, -CONFIGS[u'search_cdr_days'])   
     print 'cd_max: ', cd_max
     print 'cd_min: ', cd_min
             
     print ("Crawling Images...")
     
-    class_save_dir = osp.join(save_dir, class_urls_file_prefix + '_' + time_str + '_' + output_suffix)
+    class_save_dir = osp.join(CONFIGS[u'save_dir'], class_urls_file_prefix + '_' + time_str + '_' + CONFIGS[u'output_suffix'])
     if not osp.exists(class_save_dir):
         os.mkdir(class_save_dir)
     
-    output_all_urls_file  = osp.join(save_dir, class_urls_file_prefix +'_all.txt')        
+    output_all_urls_file  = osp.join(CONFIGS[u'save_dir'], class_urls_file_prefix +'_all.txt')        
     fp_all_urls = open(output_all_urls_file, 'a+')
     
-    output_urls_file = osp.join(save_dir, class_urls_file_prefix + '_' + time_str + '_' + output_suffix + '.txt')
+    output_urls_file = osp.join(CONFIGS[u'save_dir'], class_urls_file_prefix + '_' + time_str + '_' + CONFIGS[u'output_suffix'] + '.txt')
     fp_urls = open(output_urls_file, 'a+')
     
 #    if osp.exists(output_urls_file):
@@ -369,7 +397,7 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
             
 #            query = dict(q = keyword, 
 #                         tbm = 'isch',
-#                         tbs=tbs+',ift:'+file_type)
+#                         tbs=tbs+',ift:'+CONFIGS[u'search_file_type'])
 #            
 #            #url = 'https://www.google.com/search?q=' + keyword + '&espv=2&biw=1366&bih=667&site=webhp&source=lnms&tbm=isch&sa=X&ei=XosDVaCXD8TasATItgE&ved=0CAcQ_AUoAg'
 #            #url = 'https://www.google.com/search?as_oq=' + keyword + '&as_st=y&tbm=isch&safe=images&tbs=ift:jpg'
@@ -381,7 +409,7 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
 #            time.sleep(0.1)
 #            new_items = _images_get_all_items(raw_html)
             
-            new_items = google_search_keyword(keyword, file_type, cdr)
+            new_items = google_search_keyword(keyword, CONFIGS[u'search_file_type'], cdr)
 
             for url in new_items:
                 #real_url = get_real_url(url)
@@ -401,7 +429,7 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
         if cdr_enabled:
             fp_params.write('{}/{}/{}\n'.format( cd_min.year, cd_min.month, cd_min.day))
             cd_max = cd_min
-            cd_min = get_new_date_by_delta_days(cd_max, -cdr_interval_days)               
+            cd_min = get_new_date_by_delta_days(cd_max, -CONFIGS[u'search_cdr_days'])               
         else:
             fp_params.write('{}/{}/{}\n'.format( cd_max.year, cd_max.month, cd_max.day))
             cdr_enabled = True
@@ -409,7 +437,7 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
         fp_params.flush()      
             
         print 'len(items)=', len(items)
-        if len(items) >= loaded_urls_num + target_items_for_each_keyword:          
+        if len(items) >= loaded_urls_num + CONFIGS[u'num_downloads_for_each_class']:          
             break
 
     fp_params.close()

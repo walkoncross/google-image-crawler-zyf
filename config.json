@@ -1,0 +1,20 @@
+{
+    "save_dir": "./downloads/", 
+    "num_downloads_for_each_class": 200, 
+    "search_file_type": "jpg", 
+    "search_keywords_dict": {
+        "animal": [
+			"猫",
+			"狗",
+            "cat", 
+            "dog"
+        ], 
+        "fruit": [
+            "banana", 
+            "apple"
+        ]
+    }, 
+    "search_cdr_days": 60, 
+    "output_prefix": "download_urls", 
+    "output_suffix": "google"
+}
