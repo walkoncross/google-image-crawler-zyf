@@ -1,6 +1,6 @@
 # Google Image Crawler (by [James Zhao](http://github.com/walkoncross))
 ## Introduction
-### Image crawler to crawling images from google image search, downloading more than 100 images by send many search queries.
+### Image crawler for crawling images from google image search, which could download more than 100 images by sending many search queries with different date ranges.
 ## Features
 1. Download as many images as you want;
 2. Crawl images by classes, with each class having several keywords;
