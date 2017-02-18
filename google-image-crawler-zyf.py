@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#-*- coding: UTF-8 -*-
+
 #Searching and Downloading Google Images/Image Links
 
 #Import Libraries
@@ -40,14 +43,14 @@ file_type = 'jpg'
 # cdr_interval_days is the days between cd_min and cd_max.
 cdr_interval_days = 60
 
-#This list is used to search keywords. You can edit this list to search for google images of your choice. You can simply add and remove elements of the list.
-search_keyword = ['Cat', 'dog']
-search_keywords_dicts = {'animal':['cat', 'dog']}
-#search_keywords_dicts = {'TibetanFlags':['Tibetan Flag', 'Tibetan National Flag', u'雪山狮子旗'],
-#                         'IslamicFlags':['east turkestan flag', 'Islamic flag', 'muslim flag', 'Star And Crescent Flag', 'Flag with star and cresent', 'star and moon flag', 'flag with star and moon flag'],
-#                         'Guns':['gun', 'rifle', u'枪'],
-#                         'Knives':['knife', 'knives', 'dagger', 'daggers'],
-#                         'MuslimVeils':['Muslim veils', 'Islamic veils', 'black hijab', 'Islamic Women', 'Islamic woman']
+#This dict is used to search keywords. You can edit this dict to search for google images of your choice. You can simply add and remove elements of the list.
+#{searching_issue 1:[list of issue1 related keywords], searching_issue2:[list of issue2 related keywords]...}
+search_keywords_dicts = {'animal':[u'猫', 'cat', 'dog']}
+#search_keywords_dicts = {'TibetanFlags':[u'藏独旗帜', u'雪山狮子旗', 'Tibetan Flag', 'Tibetan National Flag'],
+#                         'IslamicFlags':[u'星月旗', 'east turkestan flag', 'Islamic flag', 'muslim flag', 'Star And Crescent Flag', 'Flag with star and cresent', 'star and moon flag', 'flag with star and moon flag'],
+#                         'Guns':[u'枪械', 'gun', 'rifle'],
+#                         'Knives':[u'防身刀具', u'刀具', 'knife', 'knives', 'dagger', 'daggers'],
+#                         'MuslimVeils':[u'伊斯兰面纱', u'穆斯林面纱', 'Muslim veils', 'Islamic veils', 'black hijab', 'Islamic Women', 'Islamic woman']
 #                         }
 #                         
 
@@ -56,16 +59,40 @@ search_keywords_dicts = {'animal':['cat', 'dog']}
 
 save_dir = './downloads' + '/'
 
-output_urls_file_prefix = 'google_download_urls_'
+output_prefix = 'download_urls_'
+output_suffix = 'google'
 
 if not osp.exists(save_dir):
     os.mkdir(save_dir)
 
-#output_urls_file_prefix = save_dir + output_urls_file_prefix  
+#output_prefix = save_dir + output_prefix  
 ########### End of Editing ###########
 
 #Load downloaded urls
+
 def load_url_files(_dir, file_name_prefix):
+    url_list = []
+    
+    ttl_url_list_file_name = osp.join(_dir, file_name_prefix +'_all.txt')
+    if osp.exists(ttl_url_list_file_name):
+        fp_urls = open(ttl_url_list_file_name, 'r')        #Open the text file called database.txt
+        print 'load URLs from file: ' + ttl_url_list_file_name
+        
+        i = 0
+        for line in fp_urls:
+            line = line.strip()
+            if len(line)>0:
+                url_list.append(line.strip())
+                i=i+1
+                
+        print str(i) + ' URLs loaded'
+        fp_urls.close()             
+    else:
+        url_list = load_all_url_files(_dir, file_name_prefix)
+            
+    return url_list     
+
+def load_all_url_files(_dir, file_name_prefix):
     url_list = []
     
     for file_name in os.listdir(_dir):
@@ -84,7 +111,8 @@ def load_url_files(_dir, file_name_prefix):
             fp_urls.close()
             
     return url_list         
-    
+ 
+############## Functions to get date/time strings ############       
 def get_current_date():
     tm = time.gmtime()
     date = datetime.date(tm.tm_year, tm.tm_mon, tm.tm_mday)   
@@ -104,9 +132,30 @@ def get_gmttime_string():
 def get_localtime_string():
     _str = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     return _str
+############## End of Functions to get date/time strings ############          
+    
+############## Google Image Search functions ############    
+############## Get Image URL list form Google image search by keyword ############
+def google_get_query_url(keyword, file_type, cdr):
+    url = None
+    
+    # if keyword is unicode, we need to encode it into utf-8
+    if isinstance(keyword, unicode):
+        keyword = keyword.encode('utf-8')
+        
+    query = dict(q = keyword, 
+                 tbm = 'isch',
+                 tbs=cdr+',ift:'+file_type)
+    
+    #url = 'https://www.google.com/search?q=' + keyword + '&espv=2&biw=1366&bih=667&site=webhp&source=lnms&tbm=isch&sa=X&ei=XosDVaCXD8TasATItgE&ved=0CAcQ_AUoAg'
+    #url = 'https://www.google.com/search?as_oq=' + keyword + '&as_st=y&tbm=isch&safe=images&tbs=ift:jpg'
+    url = 'https://www.google.com/search?'+urlencode(query)
+			
+    print "\t==>Google Query URL is: " + url
+    return url
     
 #Downloading entire Web Document (Raw Page Content)
-def download_page(url):
+def google_download_page(url):
     version = (3,0)
     cur_version = sys.version_info
     if cur_version >= version:     #If the Current Version of Python is 3.0 or above
@@ -132,9 +181,8 @@ def download_page(url):
         except:
             return"Page Not found"
 
-
 #Finding 'Next Image' from the given raw page
-def _images_get_next_item(s):
+def google_images_get_next_item(s):
     start_line = s.find('rg_di')
     if start_line == -1:    #If no links are found then give an error!
         end_quote = 0
@@ -147,12 +195,11 @@ def _images_get_next_item(s):
         content_raw = str(s[start_content+6:end_content-1])
         return content_raw, end_content
 
-
 #Getting all links with the help of '_images_get_next_image'
-def _images_get_all_items(page):
+def google_images_get_all_items(page):
     items = []
     while True:
-        item, end_content = _images_get_next_item(page)
+        item, end_content = google_images_get_next_item(page)
         if item == "no_links":
             break
         else:
@@ -160,9 +207,18 @@ def _images_get_all_items(page):
             time.sleep(0.1)        #Timer could be used to slow down the request for image downloads
             page = page[end_content:]
     return items
-
+   
+def google_search_keyword(keyword, file_type, cdr):  
+    query_url = google_get_query_url(keyword, file_type, cdr)
+    raw_html =  (google_download_page(query_url))
+    time.sleep(0.1)
+    image_url_list = google_images_get_all_items(raw_html)    
+    return image_url_list    
+############## End of Google Image Search functions ############    
+    
+############## Functions to get real urls and download images ############       
 #Get real url of a input url    
-def _get_real_url(url):
+def get_real_url(url, loaded_urls):
     real_url = None
     response = None
     try:
@@ -170,6 +226,12 @@ def _get_real_url(url):
         response = urlopen(req)
         
         real_url = response.geturl()
+        print 'Real_url is: ' + str(real_url)
+        
+        if real_url in loaded_urls:
+            print 'URL had been downloaded in previous '
+            real_url = None
+        
     except IOError as e:   #If there is any IOError
         print("IOError on url "+str(url))
         print e
@@ -179,13 +241,13 @@ def _get_real_url(url):
     except URLError as e:
         print("URLError on url "+str(url))
         print e
-    finally:
-        if response:
-            response.close()    
+
+    if response:
+        response.close()    
         
     return real_url
 
-def download_image(url, save_dir):
+def download_image(url, save_dir, loaded_urls=None):
     real_url = None
     response = None
     try:
@@ -194,14 +256,16 @@ def download_image(url, save_dir):
         
         real_url = response.geturl()
         
-        print 'Real_url is: ' + str(real_url)
-        #img_name = str(k) + '_' + real_url.rsplit('/')[-1]
-        img_name = hashlib.md5(real_url).hexdigest()
-        save_image_name = save_dir + '/' + img_name + '.' + file_type
-        print 'Try to save image ' + real_url + ' into file: ' +  save_image_name
-        output_file = open(save_image_name,'wb')
-        data = response.read()
-        output_file.write(data)
+        if loaded_urls and real_url in loaded_urls:
+            print 'URL had been downloaded in previous searching'
+            real_url = None
+        else:
+            img_name = hashlib.md5(real_url).hexdigest()
+            save_image_name = save_dir + '/' + img_name + '.' + file_type
+            print 'Try to save image ' + real_url + ' into file: ' +  save_image_name
+            output_file = open(save_image_name,'wb')
+            data = response.read()
+            output_file.write(data)
         
         #response.close()
     except IOError as e:   #If there is any IOError
@@ -213,12 +277,12 @@ def download_image(url, save_dir):
     except URLError as e:
         print("URLError on url "+str(url))
         print e
-    finally:
-        if response:
-            response.close()
+
+    if response:
+        response.close()
         
     return real_url
-    
+############## End of Functions to get real urls and download images ############         
     
 ############## Main Program ############
 t0 = time.time()   #start the timer
@@ -234,7 +298,7 @@ time_str = get_gmttime_string()
 for class_name,search_keywords in search_keywords_dicts.iteritems():
     print "Class no.: " + str(i+1) + " -->" + " Class name = " + str(class_name)
    
-    class_urls_file_prefix = output_urls_file_prefix + str(class_name).strip()
+    class_urls_file_prefix = output_prefix + str(class_name).strip()
     
     items = load_url_files(save_dir, class_urls_file_prefix)    
     loaded_urls_num = len(items)
@@ -243,13 +307,15 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
     # load pre-saved download parameters, actually cd_min for date range
     cd_max = cur_date
 
-    params_file = osp.join(save_dir, class_urls_file_prefix + '_params.txt')
+    params_file = osp.join(save_dir, class_urls_file_prefix + '_params_' + output_suffix + '.txt')
+    print 'Loaded pre-saved download parameters from: ' + params_file
     params_list = []
     fp_params = open(params_file, 'a+')
     for line in fp_params:
         line = line.strip()
         if line!='':
             params_list.append(line)
+            print "\t-->loaded parameters: ", line
             
     if len(params_list)>0:
         splits = params_list[-1].split('/')
@@ -262,11 +328,14 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
             
     print ("Crawling Images...")
     
-    class_save_dir = osp.join(save_dir, class_urls_file_prefix + '_' + time_str)
+    class_save_dir = osp.join(save_dir, class_urls_file_prefix + '_' + time_str + '_' + output_suffix)
     if not osp.exists(class_save_dir):
         os.mkdir(class_save_dir)
-        
-    output_urls_file = osp.join(save_dir, class_urls_file_prefix + '_' + time_str + '.txt')
+    
+    output_all_urls_file  = osp.join(save_dir, class_urls_file_prefix +'_all.txt')        
+    fp_all_urls = open(output_all_urls_file, 'a+')
+    
+    output_urls_file = osp.join(save_dir, class_urls_file_prefix + '_' + time_str + '_' + output_suffix + '.txt')
     fp_urls = open(output_urls_file, 'a+')
     
 #    if osp.exists(output_urls_file):
@@ -276,15 +345,15 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
 #    else:
 #        fp_urls = open(output_urls_file, 'w+')        #Open the text file called database.txt
 #    
-    cdr_enabled = 0
+    cdr_enabled = False
     
     while True:        
         if cdr_enabled:
-            tbs = 'cdr:1,cd_min:{},cd_max:{}'.format(cd_min.strftime('%m/%d/%Y'), cd_max.strftime('%m/%d/%Y'))
+            cdr = 'cdr:1,cd_min:{},cd_max:{}'.format(cd_min.strftime('%m/%d/%Y'), cd_max.strftime('%m/%d/%Y'))
             print "==>Search for Images between " + cd_min.strftime("%Y/%m/%d") + \
                     ' and ' + cd_max.strftime("%Y/%m/%d")
         else:
-            tbs = ''
+            cdr = ''
             print "==>Search for Images in any time"
 
         j = 0
@@ -294,43 +363,59 @@ for class_name,search_keywords in search_keywords_dicts.iteritems():
             print "\t==>Class name=" + str(class_name) + ', search keywords=' + search_keywords[j]
             keyword = search_keywords[j]#.replace(' ','%20')
             
-            query = dict(q = keyword, 
-                         tbm = 'isch',
-                         tbs=tbs+',ift:'+file_type)
+#            # if keyword is unicode, we need to encode it into utf-8
+#            if isinstance(keyword, unicode):
+#                keyword = keyword.encode('utf-8')
             
-            #url = 'https://www.google.com/search?q=' + keyword + '&espv=2&biw=1366&bih=667&site=webhp&source=lnms&tbm=isch&sa=X&ei=XosDVaCXD8TasATItgE&ved=0CAcQ_AUoAg'
-            #url = 'https://www.google.com/search?as_oq=' + keyword + '&as_st=y&tbm=isch&safe=images&tbs=ift:jpg'
-            url = 'https://www.google.com/search?'+urlencode(query)
-            raw_html =  (download_page(url))
-            time.sleep(0.1)
-            new_items = _images_get_all_items(raw_html)
+#            query = dict(q = keyword, 
+#                         tbm = 'isch',
+#                         tbs=tbs+',ift:'+file_type)
+#            
+#            #url = 'https://www.google.com/search?q=' + keyword + '&espv=2&biw=1366&bih=667&site=webhp&source=lnms&tbm=isch&sa=X&ei=XosDVaCXD8TasATItgE&ved=0CAcQ_AUoAg'
+#            #url = 'https://www.google.com/search?as_oq=' + keyword + '&as_st=y&tbm=isch&safe=images&tbs=ift:jpg'
+#            url = 'https://www.google.com/search?'+urlencode(query)
+#			
+#            print "\t==>Query URL is: " + url
+#			
+#            raw_html =  (download_page(url))
+#            time.sleep(0.1)
+#            new_items = _images_get_all_items(raw_html)
             
+            new_items = google_search_keyword(keyword, file_type, cdr)
+
             for url in new_items:
-                #real_url = _get_real_url(url)
-                real_url = download_image(url, class_save_dir)
+                #real_url = get_real_url(url)
+                real_url = download_image(url, class_save_dir, items)
+                
                 if real_url and real_url not in items:
                     items.append(real_url)
+                    fp_all_urls.write(real_url + "\n")
                     fp_urls.write(real_url + "\n")
-                    
+
+            fp_all_urls.flush()                    
             fp_urls.flush()
 
             print 'len(items)=', len(items)
             j = j + 1
         
         if cdr_enabled:
-            fp_params.write('%d/%d/%d', cd_min.year, cd_min.month, cd_min.day)
+            fp_params.write('{}/{}/{}\n'.format( cd_min.year, cd_min.month, cd_min.day))
             cd_max = cd_min
             cd_min = get_new_date_by_delta_days(cd_max, -cdr_interval_days)               
         else:
-            cdr_enabled = 1
+            fp_params.write('{}/{}/{}\n'.format( cd_max.year, cd_max.month, cd_max.day))
+            cdr_enabled = True
+
+        fp_params.flush()      
             
         print 'len(items)=', len(items)
         if len(items) >= loaded_urls_num + target_items_for_each_keyword:          
             break
 
     fp_params.close()
-    fp_urls.close()                            #Close the file
-        
+    fp_all_urls.close()
+    fp_urls.close()
+
     #print ("Image Links = "+str(items))
     print ("Total New Image Links = " + str(len(items) - loaded_urls_num))
     print ("\n")
