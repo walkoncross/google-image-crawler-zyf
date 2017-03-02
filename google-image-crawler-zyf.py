@@ -109,7 +109,8 @@ def load_url_files(_dir, file_name_prefix):
         for line in fp_urls:
             line = line.strip()
             if len(line)>0:
-                url_list.append(line.strip())
+                splits = line.split(sep='\t')
+                url_list.append(splits[0].strip())
                 i=i+1
                 
         print str(i) + ' URLs loaded'
@@ -132,7 +133,8 @@ def load_all_url_files(_dir, file_name_prefix):
             for line in fp_urls:
                 line = line.strip()
                 if len(line)>0:
-                    url_list.append(line.strip())
+                    splits = line.split(sep='\t')
+                    url_list.append(splits[0].strip())
                     i=i+1
             print str(i) + ' URLs loaded'
             fp_urls.close()
@@ -278,6 +280,7 @@ def get_real_url(url, loaded_urls):
 def download_image(url, save_dir, loaded_urls=None):
     real_url = None
     response = None
+    save_image_name = None
     try:
         req = Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.27 Safari/537.17"})
         response = urlopen(req)
@@ -309,7 +312,7 @@ def download_image(url, save_dir, loaded_urls=None):
     if response:
         response.close()
         
-    return real_url
+    return real_url, save_image_name
 ############## End of Functions to get real urls and download images ############         
     
 ############## Main Program ############
@@ -413,12 +416,12 @@ for class_name,search_keywords in CONFIGS[u'search_keywords_dict'].iteritems():
 
             for url in new_items:
                 #real_url = get_real_url(url)
-                real_url = download_image(url, class_save_dir, items)
+                real_url, save_name = download_image(url, class_save_dir, items)
                 
                 if real_url and real_url not in items:
                     items.append(real_url)
-                    fp_all_urls.write(real_url + "\n")
-                    fp_urls.write(real_url + "\n")
+                    fp_all_urls.write(real_url + '\t' + save_name + "\n")
+                    fp_urls.write(real_url + '\t' + save_name + "\n")
 
             fp_all_urls.flush()                    
             fp_urls.flush()
