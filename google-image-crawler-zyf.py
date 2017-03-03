@@ -109,7 +109,7 @@ def load_url_files(_dir, file_name_prefix):
         for line in fp_urls:
             line = line.strip()
             if len(line)>0:
-                splits = line.split(sep='\t')
+                splits = line.split('\t')
                 url_list.append(splits[0].strip())
                 i=i+1
                 
@@ -133,7 +133,7 @@ def load_all_url_files(_dir, file_name_prefix):
             for line in fp_urls:
                 line = line.strip()
                 if len(line)>0:
-                    splits = line.split(sep='\t')
+                    splits = line.split('\t')
                     url_list.append(splits[0].strip())
                     i=i+1
             print str(i) + ' URLs loaded'
