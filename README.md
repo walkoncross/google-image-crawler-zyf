@@ -5,7 +5,7 @@
 1. Download as many images as you want;
 2. Crawl images by classes, with each class having several keywords;
 3. Check duplicate image URLs before downloading, even when you restart the crawler;
-4. Easylly configure:
+4. Easy configuration:
 Please refer to [config.json](./config.json).
 
 ---
